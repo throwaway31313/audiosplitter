@@ -48,6 +48,16 @@ typedef struct PacketQueue{
     // SDL_cond *cond;
 } PacketQueue;
 
+//Queue function protoypes:
+void packet_queue_init(PacketQueue *q);
+int packet_queue_put(PacketQueue *q, AVPacket *pkt);
+static int packet_queue_get(PacketQueue *q, AVPacket *pkt, int block);
+
+// Opens the context, making sure that a proper audio stream is found and read.
+int open_codec_context(int *stream_idx, AVFormatContext *pFormatCtx, enum AVMediaType type);
+// decodes the audio packet into the global "frame"
+//static int decode_audio_packet(int *got_frame,int cached);
+
 
 // Files
 static char * src_filename = NULL;
@@ -65,13 +75,14 @@ static int audio_stream_idx = -1;
 static int refcount = 0;
 static int audio_frame_count = 0;
 
+static int quit = 0;
 
-// Opens the context, making sure that a proper audio stream is found and read.
-int open_codec_context(int *stream_idx, AVFormatContext *pFormatCtx, enum AVMediaType type);
-// decodes the audio packet into the global "frame"
-static int decode_audio_packet(int *got_frame,int cached);
+// Main queue to store AVPackets
+PacketQueue audioq;
 
 int main(int argc, char *argv[]){
+    
+    packet_queue_init(&audioq);
     
     int ret = -1;
     int numOfChannels = 0;
@@ -126,9 +137,15 @@ int main(int argc, char *argv[]){
     
     
     
-    uint64_t chanId =  pFormatCtx->streams[audio_stream_idx]->codec->channel_layout;
-    printf("chan layout:  %04x\n\n", chanId);
+    uint64_t chanLayout =  pAudioCodecCtx->channel_layout;
+    printf("chan layout:  %04x\n\n", chanLayout);
+    uint64_t chanId[numOfChannels]; 
     
+    for(i = 0; i < numOfChannels; i ++){
+        chanId[i] = av_channel_layout_extract_channel(chanLayout,i);
+        printf("Channel %d: %s\n",i,av_get_channel_description(chanId[i]));
+        printf("Channel name: %s\n",av_get_channel_name(chanId[i]));
+    }
     
     // The chanId can be used to map back to the desired channels using the table below.
     // For example, if chanId = 0x003f, this means that the channels are
@@ -136,26 +153,7 @@ int main(int argc, char *argv[]){
     
     // TO DO: implement this to name files meaningfully.
     
-//    49 #define AV_CH_FRONT_LEFT             0x00000001
-//    50 #define AV_CH_FRONT_RIGHT            0x00000002
-//    51 #define AV_CH_FRONT_CENTER           0x00000004
-//    52 #define AV_CH_LOW_FREQUENCY          0x00000008
-//    53 #define AV_CH_BACK_LEFT              0x00000010
-//    54 #define AV_CH_BACK_RIGHT             0x00000020
-//    55 #define AV_CH_FRONT_LEFT_OF_CENTER   0x00000040
-//    56 #define AV_CH_FRONT_RIGHT_OF_CENTER  0x00000080
-//    57 #define AV_CH_BACK_CENTER            0x00000100
-//    58 #define AV_CH_SIDE_LEFT              0x00000200
-//    59 #define AV_CH_SIDE_RIGHT             0x00000400
-//    60 #define AV_CH_TOP_CENTER             0x00000800
-//    61 #define AV_CH_TOP_FRONT_LEFT         0x00001000
-//    62 #define AV_CH_TOP_FRONT_CENTER       0x00002000
-//    63 #define AV_CH_TOP_FRONT_RIGHT        0x00004000
-//    64 #define AV_CH_TOP_BACK_LEFT          0x00008000
-//    65 #define AV_CH_TOP_BACK_CENTER        0x00010000
-//    66 #define AV_CH_TOP_BACK_RIGHT         0x00020000
-//    67 #define AV_CH_STEREO_LEFT            0x20000000  ///< Stereo downmix.
-//    68 #define AV_CH_STEREO_RIGHT           0x40000000  ///< See AV_CH_STEREO_LEFT.
+    // There are functions that can be used for this! 
 
 
     
@@ -177,40 +175,24 @@ int main(int argc, char *argv[]){
     }
     
     
+    
     av_init_packet(&packet);
     packet.data = NULL;
     packet.size = 0;
     
-    printf("--1--\n");
-    
     
     int got_frame;
+    // Reminder: audio_stream_idx contains already the id of the audiostream
     
     while(av_read_frame(pFormatCtx, &packet)>=0){
-        printf("--2--\n");
-        AVPacket orig_pkt = packet;
-        printf("--3--\n");
-        do{
-            ret = decode_audio_packet(&got_frame,0);
-            if (ret < 0){
-                break;
-            }
-            printf("--4--\n");
-            packet.data+=ret;
-            packet.size-=ret;
-            
-            printf("Value from decode_audio_packet: %d",ret);
-        }while(packet.size>0);
-        av_packet_unref(&orig_pkt);
+       if(packet.stream_index==audio_stream_idx){
+           packet_queue_put(&audioq,&packet);
+       }else av_free_packet(&packet);
     }
     
     // Flush cached frames
     packet.data = NULL;
     packet.size = 0;
-    
-    do{
-        decode_audio_packet(&got_frame,1);
-    } while(got_frame);
     
     printf("Demuxing succeeded");
     
@@ -258,52 +240,121 @@ int open_codec_context(int *stream_idx, AVFormatContext *pFormatCtx, enum AVMedi
     return 0;
 }
 
+
+
+/* PACKET QUEUE FUNCTIONS */
+
+// TODO: Finish queue functions when using beginning multithreading stage.
+
+void packet_queue_init(PacketQueue *q){
+    memset(q,0,sizeof(PacketQueue)); // initialize with 0's
+}
+int packet_queue_put(PacketQueue *q, AVPacket *pkt){
+    //Create temporary
+    AVPacketList *temp;
+    
+    // Doxygen says function is deprecated. Try to find alternative if there are errors.
+    if(av_dup_packet(pkt) < 0){
+        return -1;
+    }
+    
+    // Allocate memory
+    temp = av_malloc(sizeof(AVPacketList));
+    if(!temp) return -1;
+    
+    // Instantiate (necessary if queue is empty)
+    temp->pkt = *pkt;
+    temp->next = NULL;
+    
+    // Update last and first packets
+    if(!q->last_pkt){
+        q->first_pkt = temp;
+    }else q->last_pkt->next = temp;
+        q->last_pkt = temp;
+    
+    
+    // Update other queue parameters
+    q->nb_packets++;
+    q->size+=temp->pkt.size; 
+    
+    
+}
+static int packet_queue_get(PacketQueue *q, AVPacket *pkt, int block){ 
+    // assumes a global variable "quit" 
+   
+    AVPacketList * temp;
+    int ret;
+    
+    if(quit){
+        ret = -1;
+    }
+    // retrieve first packet in Queue
+    temp = q->first_pkt;
+    
+    // temp to first 
+    if(temp){
+        q->first_pkt = temp->next;
+        if(!q->first_pkt) q->last_pkt = NULL;
+        ret = 1;
+        // update size and nb_packets
+        q->size -= temp->pkt.size;
+        q->nb_packets--;
+        
+        //free temp
+        av_free(temp);
+    }else if(!block){
+        ret = 0;
+    }    
+}
+    
+
+
 // Decodes the packet and returns its value (?)
 // Adapted from http://ffmpeg.org/doxygen/3.0/demuxing_decoding_8c-example.html
-static int decode_audio_packet(int *got_frame,int cached){
-    int ret = 0;
-    int decoded = packet.size; // references static variable
+// static int decode_audio_packet(int *got_frame,int cached){
+//     int ret = 0;
+//     int decoded = packet.size; // references static variable
     
-    *got_frame = 0;
+//     *got_frame = 0;
     
-    printf("--3.1--\n");
-    printf("** %d\n",pAudioCodecCtx->channels);
-    printf("** %d\n",*got_frame);
-    printf("** %d\n", packet.stream_index);
-    printf("** %d\n",audio_stream_idx);
+//     printf("--3.1--\n");
+//     printf("** %d\n",pAudioCodecCtx->channels);
+//     printf("** %d\n",*got_frame);
+//     printf("** %d\n", packet.stream_index);
+//     printf("** %d\n",audio_stream_idx);
     
-    if(packet.stream_index == audio_stream_idx){
-        ret = avcodec_decode_audio4(pAudioCodecCtx,pFrame,got_frame,&packet);
-        printf("--3.2--\n");
-        // avcodec_decode_audio4 doc: 
-        // Decode the audio frame of size avpkt->size from avpkt->data into frame.
+//     if(packet.stream_index == audio_stream_idx){
+//         ret = avcodec_decode_audio4(pAudioCodecCtx,pFrame,got_frame,&packet);
+//         printf("--3.2--\n");
+//         // avcodec_decode_audio4 doc: 
+//         // Decode the audio frame of size avpkt->size from avpkt->data into frame.
         
-        if(ret < 0){
-            fprintf(stderr,"Error decoding audio frame (%s)\n", av_err2str(ret));
-        }
-        /* Some audio decoders decode only part of the packet, and have to be
-            * called again with the remainder of the packet data.
-            * Sample: fate-suite/lossless-audio/luckynight-partial.shn
-            * Also, some decoders might over-read the packet. */
-        decoded = FFMIN(ret,packet.size);
+//         if(ret < 0){
+//             fprintf(stderr,"Error decoding audio frame (%s)\n", av_err2str(ret));
+//         }
+//         /* Some audio decoders decode only part of the packet, and have to be
+//             * called again with the remainder of the packet data.
+//             * Sample: fate-suite/lossless-audio/luckynight-partial.shn
+//             * Also, some decoders might over-read the packet. */
+//         decoded = FFMIN(ret,packet.size);
         
         
-        if(*got_frame){ // frame is valid
-            printf("--3.3--\n");
-            size_t unpadded_linesize = pFrame->nb_samples*av_get_bytes_per_sample(pFrame->format);
-            printf("audio_frame%s n:%d nb_samples:%d pts:%s\n",
-                    cached ? "(cached)" : "",
-                    audio_frame_count++, pFrame->nb_samples,
-                    av_ts2timestr(pFrame->pts, &pAudioCodecCtx->time_base));
-            //fwrite(frame->extended_data[0], 1, unpadded_linesize, audio_dst_file);
-        }
-    }
-    printf("--3.4--\n");
-    if (*got_frame && refcount)
-        av_frame_unref(pFrame);
+//         if(*got_frame){ // frame is valid
+//             printf("--3.3--\n");
+//             size_t unpadded_linesize = pFrame->nb_samples*av_get_bytes_per_sample(pFrame->format);
+//             printf("audio_frame%s n:%d nb_samples:%d pts:%s\n",
+//                     cached ? "(cached)" : "",
+//                     audio_frame_count++, pFrame->nb_samples,
+//                     av_ts2timestr(pFrame->pts, &pAudioCodecCtx->time_base));
+//             //fwrite(frame->extended_data[0], 1, unpadded_linesize, audio_dst_file);
+//         }
+//     }
+//     printf("--3.4--\n");
+//     if (*got_frame && refcount)
+//         av_frame_unref(pFrame);
 
-    return decoded;
-}
+//     return decoded;
+// }
 /* 
 REFERENCES:
 http://ffmpeg.org/doxygen/trunk/demuxing_decoding_8c-example.html
