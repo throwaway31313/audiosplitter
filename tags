@@ -1,0 +1,28 @@
+Maudiosplitter	audiosplitter.c	/^int main (int argc, char **argv)$/
+audio_dst_file	audiosplitter.c	110
+audio_dst_filename	audiosplitter.c	108
+audio_frame_count	audiosplitter.c	118
+decode_packet	audiosplitter.c	/^static int decode_packet(int *got_frame, int cache/
+fmt_be	audiosplitter.c	238
+fmt_ctx	audiosplitter.c	101
+fmt_le	audiosplitter.c	238
+frame	audiosplitter.c	115
+get_format_from_sample_fmt	audiosplitter.c	/^static int get_format_from_sample_fmt(const char */
+height	audiosplitter.c	103
+open_codec_context	audiosplitter.c	/^static int open_codec_context(int *stream_idx,$/
+pix_fmt	audiosplitter.c	104
+pkt	audiosplitter.c	116
+refcount	audiosplitter.c	123
+sample_fmt	audiosplitter.c	238
+sample_fmt_entry	audiosplitter.c	237
+src_filename	audiosplitter.c	106
+video_dec_ctx	audiosplitter.c	102
+video_dst_bufsize	audiosplitter.c	113
+video_dst_data	audiosplitter.c	111
+video_dst_file	audiosplitter.c	109
+video_dst_filename	audiosplitter.c	107
+video_dst_linesize	audiosplitter.c	112
+video_frame_count	audiosplitter.c	117
+video_stream	audiosplitter.c	105
+video_stream_idx	audiosplitter.c	114
+width	audiosplitter.c	103
