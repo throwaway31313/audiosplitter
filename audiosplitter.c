@@ -4,6 +4,7 @@
 
 #include <stdio.h> //TDO: remove after debug
 #include <string.h>
+#include <stdlib.h>
 
 // Project description: An command line argument is given by the user,
 // which will then indicate the audio file he wishes to split. Based on a) The file name
@@ -78,17 +79,23 @@ int main(int argc, char *argv[]){
     if (open_codec_context(&audio_stream_idx, pFormatCtx, AVMEDIA_TYPE_AUDIO) >= 0) {
         pAudioStream = pFormatCtx->streams[audio_stream_idx];
         pAudioCodecCtx = pAudioStream->codec;
-        
     }
     
     
 
     numOfChannels = pFormatCtx->streams[audio_stream_idx]->codec->channels;
     
-    // loop to create the files
-    int i;
+    // loop to create the files. Ugly, but works for now.
+    int i;  
+    char * token;
+    char * temp = malloc(20*sizeof(char));
+    char * outNames[numOfChannels]; 
+    token = "Output_";
     for(i = 0; numOfChannels > 0 && i < numOfChannels;i++){
-        
+        char a = i+'0';
+        asprintf(&temp,"%s%c",token,a);
+        outNames[i] = temp;
+        // printf("%s\n",outNames[i]);
     } 
     
     
