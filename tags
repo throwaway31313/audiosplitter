@@ -1,10 +1,19 @@
 Maudiosplitter	audiosplitter.c	/^int main(int argc, char *argv[]){$/
-audio_stream_idx	audiosplitter.c	41
+PacketQueue	audiosplitter.c	36
+PacketQueue	audiosplitter.c	49
+audio_frame_count	audiosplitter.c	66
+audio_stream_idx	audiosplitter.c	64
+decode_audio_packet	audiosplitter.c	/^static int decode_audio_packet(int *got_frame,int /
+first_pkt	audiosplitter.c	37
+last_pkt	audiosplitter.c	37
+nb_packets	audiosplitter.c	45
 open_codec_context	audiosplitter.c	/^int open_codec_context(int *stream_idx, AVFormatCo/
-pAudioCodec	audiosplitter.c	35
-pAudioCodecCtx	audiosplitter.c	34
-pAudioStream	audiosplitter.c	36
-pFormatCtx	audiosplitter.c	33
-pFrame	audiosplitter.c	38
-pkt	audiosplitter.c	39
-src_filename	audiosplitter.c	30
+pAudioCodec	audiosplitter.c	58
+pAudioCodecCtx	audiosplitter.c	57
+pAudioStream	audiosplitter.c	59
+pFormatCtx	audiosplitter.c	56
+pFrame	audiosplitter.c	61
+packet	audiosplitter.c	62
+refcount	audiosplitter.c	65
+size	audiosplitter.c	46
+src_filename	audiosplitter.c	53
