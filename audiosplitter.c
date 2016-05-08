@@ -1,6 +1,7 @@
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libswscale/swscale.h>
+#include <libavutil/timestamp.h>
 
 #include <stdio.h> //TDO: remove after debug
 #include <string.h>
@@ -15,10 +16,10 @@
 
 // Procedure for audio splitter:
 
-// 1) Open file, establish AVStream, Codec context and thus the number of channels. 
+// 1) Open file, establish AVStream, Codec context and thus the number of channels.  ... Done!
 // 2) Extract the AVStream into frames, and process them, based on AAC input.
 // 3) Output to the files correctly. 
-// 4) Expand to Vorbis, WMA and ALAC
+// 4) Expand to Vorbis, WMA and ALAC ... No need!
 // 5) Multithread.
 
 // Reminders: Error control (incomplete files, wrong file names, etc.)
@@ -26,23 +27,49 @@
 //            Git commit
 //            
 
+
+// Queue strucure. 
+// Example used from http://dranger.com/ffmpeg/tutorial03.html
+// The current idea is to have this structure ready for when 
+// we begin to create the callback functions for each channel.
+
+typedef struct PacketQueue{
+    AVPacketList *first_pkt, *last_pkt;
+    
+    //TODO: remove reference
+    // typedef struct AVPacketList {
+    //   AVPacket pkt;
+    //   struct AVPacketList *next;
+    // } AVPacketList;
+    
+    int nb_packets;
+    int size;
+    // SDL_mutex *mutex;   ---> Not using SDL at he moment
+    // SDL_cond *cond;
+} PacketQueue;
+
+
 // Files
 static char * src_filename = NULL;
 
 // Necessary structure definitions
 static AVFormatContext *pFormatCtx = NULL;
-static AVCodecContext *pAudioCodecCtx = NULL; // will point to the audio context;
+static AVCodecContext *pAudioCodecCtx; // will point to the audio context;
 static AVCodec *pAudioCodec = NULL;
 static AVStream *pAudioStream = NULL; 
 
 static AVFrame *pFrame = NULL;
-static AVPacket pkt;
+static AVPacket packet;
 
 static int audio_stream_idx = -1;
+static int refcount = 0;
+static int audio_frame_count = 0;
 
 
 // Opens the context, making sure that a proper audio stream is found and read.
 int open_codec_context(int *stream_idx, AVFormatContext *pFormatCtx, enum AVMediaType type);
+// decodes the audio packet into the global "frame"
+static int decode_audio_packet(int *got_frame,int cached);
 
 int main(int argc, char *argv[]){
     
@@ -56,9 +83,6 @@ int main(int argc, char *argv[]){
     
     av_register_all(); // registers all available formats and codecs with the library.
                        // To use automatically.
-                       
-                       // TODO: Include other Codecs
-                       
     // Open file to obtain AVFormatContext:
     if(avformat_open_input(&pFormatCtx,src_filename, NULL,NULL) < 0){
         fprintf(stderr,"Could not open source file\n");
@@ -76,14 +100,16 @@ int main(int argc, char *argv[]){
     av_dump_format(pFormatCtx,0,src_filename,0);
     
     
+    // Opens up the stream if there is an audio codec 
     if (open_codec_context(&audio_stream_idx, pFormatCtx, AVMEDIA_TYPE_AUDIO) >= 0) {
         pAudioStream = pFormatCtx->streams[audio_stream_idx];
         pAudioCodecCtx = pAudioStream->codec;
+        printf("Check\n");
     }
     
-    
-
-    numOfChannels = pFormatCtx->streams[audio_stream_idx]->codec->channels;
+    // numOfChannels = pFormatCtx->streams[audio_stream_idx]->codec->channels; 
+    // numOfChannels will eventually determine the number of threads.
+    numOfChannels = pAudioCodecCtx->channels;
     
     // loop to create the files. Ugly, but works for now.
     int i;  
@@ -134,12 +160,68 @@ int main(int argc, char *argv[]){
 
     
     
-    
-    
     // TODO: remove reference
     // int av_read_frame	(	AVFormatContext * 	s,
     //     AVPacket * 	pkt     
-    // )	
+    // )
+    // This function returns the next frame of a stream. Does not validate 
+    // That the frames are valid for the decoder. It will split what is stored 
+    // in the file into frames and return one for each call.
+    
+    //Now we will read the packets. 
+    
+    pFrame = av_frame_alloc();
+    if (!pFrame) {
+        fprintf(stderr, "Could not allocate frame\n");
+        ret = AVERROR(ENOMEM);
+    }
+    
+    
+    av_init_packet(&packet);
+    packet.data = NULL;
+    packet.size = 0;
+    
+    printf("--1--\n");
+    
+    
+    int got_frame;
+    
+    while(av_read_frame(pFormatCtx, &packet)>=0){
+        printf("--2--\n");
+        AVPacket orig_pkt = packet;
+        printf("--3--\n");
+        do{
+            ret = decode_audio_packet(&got_frame,0);
+            if (ret < 0){
+                break;
+            }
+            printf("--4--\n");
+            packet.data+=ret;
+            packet.size-=ret;
+            
+            printf("Value from decode_audio_packet: %d",ret);
+        }while(packet.size>0);
+        av_packet_unref(&orig_pkt);
+    }
+    
+    // Flush cached frames
+    packet.data = NULL;
+    packet.size = 0;
+    
+    do{
+        decode_audio_packet(&got_frame,1);
+    } while(got_frame);
+    
+    printf("Demuxing succeeded");
+    
+    
+    
+    // enum AVSampleFormat sample_format = pAudioCodecCtx->sample_fmt;
+    // const char *fmt;
+    
+   //pFrame = av_frame_alloc();
+   
+   printf("DEBUG: nb_streams: %d\n", pFormatCtx->nb_streams);
         
     
 }
@@ -163,31 +245,65 @@ int open_codec_context(int *stream_idx, AVFormatContext *pFormatCtx, enum AVMedi
         // Find decoder:
         pCodecCtx = pAvStream->codec;
         pCodec = avcodec_find_decoder(pCodecCtx->codec_id);
-        //TODO: REMEMBER THE ALAC AND WMA FORMATS! THIS RIGHT HERE MUST BE CHANGED!!!
+        
         if(!pCodec){
             fprintf(stderr,"Oops! The codec %s is not currently implemented\n"
             ,av_get_media_type_string(type));
             return AVERROR(EINVAL);
         }
         // Do I need to init the decoders?
-        
-        *stream_idx = strIndex;
+               
+        *stream_idx = strIndex; // sets the index for the audio stream
     }
-    
     return 0;
-    
-    // TODO: Remove this later.
-    // int av_find_best_stream	(	AVFormatContext * 	ic,
-        // enum AVMediaType 	type,
-        // int 	wanted_stream_nb,
-        // int 	related_stream,
-        // AVCodec ** 	decoder_ret,
-        // int 	flags 
-    // )	
-    
-    
 }
 
+// Decodes the packet and returns its value (?)
+// Adapted from http://ffmpeg.org/doxygen/3.0/demuxing_decoding_8c-example.html
+static int decode_audio_packet(int *got_frame,int cached){
+    int ret = 0;
+    int decoded = packet.size; // references static variable
+    
+    *got_frame = 0;
+    
+    printf("--3.1--\n");
+    printf("** %d\n",pAudioCodecCtx->channels);
+    printf("** %d\n",*got_frame);
+    printf("** %d\n", packet.stream_index);
+    printf("** %d\n",audio_stream_idx);
+    
+    if(packet.stream_index == audio_stream_idx){
+        ret = avcodec_decode_audio4(pAudioCodecCtx,pFrame,got_frame,&packet);
+        printf("--3.2--\n");
+        // avcodec_decode_audio4 doc: 
+        // Decode the audio frame of size avpkt->size from avpkt->data into frame.
+        
+        if(ret < 0){
+            fprintf(stderr,"Error decoding audio frame (%s)\n", av_err2str(ret));
+        }
+        /* Some audio decoders decode only part of the packet, and have to be
+            * called again with the remainder of the packet data.
+            * Sample: fate-suite/lossless-audio/luckynight-partial.shn
+            * Also, some decoders might over-read the packet. */
+        decoded = FFMIN(ret,packet.size);
+        
+        
+        if(*got_frame){ // frame is valid
+            printf("--3.3--\n");
+            size_t unpadded_linesize = pFrame->nb_samples*av_get_bytes_per_sample(pFrame->format);
+            printf("audio_frame%s n:%d nb_samples:%d pts:%s\n",
+                    cached ? "(cached)" : "",
+                    audio_frame_count++, pFrame->nb_samples,
+                    av_ts2timestr(pFrame->pts, &pAudioCodecCtx->time_base));
+            //fwrite(frame->extended_data[0], 1, unpadded_linesize, audio_dst_file);
+        }
+    }
+    printf("--3.4--\n");
+    if (*got_frame && refcount)
+        av_frame_unref(pFrame);
+
+    return decoded;
+}
 /* 
 REFERENCES:
 http://ffmpeg.org/doxygen/trunk/demuxing_decoding_8c-example.html
