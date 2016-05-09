@@ -6,6 +6,8 @@
 #include <stdio.h> //TDO: remove after debug
 #include <string.h>
 #include <stdlib.h>
+#include <pthread.h>
+#include <semaphore.h>
 
 // Project description: An command line argument is given by the user,
 // which will then indicate the audio file he wishes to split. Based on a) The file name
@@ -85,7 +87,7 @@ int main(int argc, char *argv[]){
     
     packet_queue_init(&audioq);
     
-    int ret = -1;
+    int ret = 0;
     int numOfChannels = 0;
     
     if(argc != 2){
@@ -116,7 +118,7 @@ int main(int argc, char *argv[]){
     if (open_codec_context(&audio_stream_idx, pFormatCtx, AVMEDIA_TYPE_AUDIO) >= 0) {
         pAudioStream = pFormatCtx->streams[audio_stream_idx];
         pAudioCodecCtx = pAudioStream->codec;
-        printf("Check\n");
+        
     }
     
     // numOfChannels = pFormatCtx->streams[audio_stream_idx]->codec->channels; 
@@ -143,28 +145,6 @@ int main(int argc, char *argv[]){
         outFile[i] = fopen(outNames[i],"wb");
         // printf("%s\n",outNames[i]);
     } 
-    
-    
-    
-    
-    
-    // for(i = 0; i < numOfChannels; i ++){
-    //     chanId[i] = av_channel_layout_extract_channel(chanLayout,i);
-    //     printf("Channel %d: %s\n",i,av_get_channel_description(chanId[i]));
-    //     printf("Channel name: %s\n",av_get_channel_name(chanId[i]));
-    // }
-    
-    // The chanId can be used to map back to the desired channels using the table below.
-    // For example, if chanId = 0x003f, this means that the channels are
-    // FL, FR, FC, LF, BL, BR. 
-    
-    // TO DO: implement this to name files meaningfully.
-    
-    // There are functions that can be used for this! 
-
-
-    
-    
     // TODO: remove reference
     // int av_read_frame	(	AVFormatContext * 	s,
     //     AVPacket * 	pkt     
@@ -183,19 +163,11 @@ int main(int argc, char *argv[]){
     
     // Reminder: audio_stream_idx contains already the id of the audiostream
     
-    while(av_read_frame(pFormatCtx, &packet)>=0){
-       if(packet.stream_index==audio_stream_idx){
-           packet_queue_put(&audioq,&packet);
+    // while(av_read_frame(pFormatCtx, &packet)>=0){
+    //    if(packet.stream_index==audio_stream_idx){
+    //        packet_queue_put(&audioq,&packet);
            
-       }else av_free_packet(&packet);
-    }
-    // Flush cached frames
-    packet.data = NULL;
-    packet.size = 0;
-    
-    // Test queue
-    // while(packet_queue_get(&audioq,&packet,0)>0){
-    //     printf("Packet size: %d\n", packet.size);
+    //    }else av_free_packet(&packet);
     // }
     
     
@@ -207,15 +179,17 @@ int main(int argc, char *argv[]){
         ret = AVERROR(ENOMEM);
     }
     
-    // Decode frames
-    int got_frame = 0;
-    while(packet_queue_get(&audioq,&packet,0)>0){
-        
-        int ret = avcodec_decode_audio4(pAudioCodecCtx,pFrame,&got_frame,&packet);  
-        
-        if(ret < 0) fprintf(stderr,"Error decoding audio frame");
-        if(got_frame){
-            size_t unpadded_linesize = pFrame->nb_samples*av_get_bytes_per_sample(pFrame->format);
+    int got_frame;
+    while(av_read_frame(pFormatCtx, &packet)>=0){
+       AVPacket orig_pkt = packet;
+       do{
+           ret = decode_audio_packet(&got_frame,0);
+           if(ret < 0) break;
+           packet.data += ret;
+           packet.size -= ret;
+           
+           if(got_frame){
+            size_t unpadded_linesize = pFrame->nb_samples * av_get_bytes_per_sample(pFrame->format);
             // printf("Packet data: %x\n", packet.data);
             // printf("pFrame samples/channels: %d\n",pFrame->nb_samples);
             // printf("pFrame channel layout: %d\n",pFrame->channel_layout);
@@ -223,29 +197,77 @@ int main(int argc, char *argv[]){
             // printf("Bytes per sample: %d\n", av_get_bytes_per_sample(pFrame->format));
             // printf("Unpadded linesize: %d",unpadded_linesize);
             
+            
+            // Write data for each channel to the specific file.
+           
             for(i = 0; i < numOfChannels; i++){
-                fopen(outNames[i],"wb");
-                fwrite(pFrame->extended_data[i],1,unpadded_linesize,outFile[i]);
-                // printf("pFrame data[%d]: %x\n" ,i,pFrame->extended_data[i]);
+                    fwrite(pFrame->extended_data[i],1,unpadded_linesize,outFile[i]);
+                    //printf("pFrame data[%d]: %x\n" ,i,pFrame->extended_data[i]);
             }
-        }
-        av_frame_unref(pFrame);
+            //fwrite(pFrame->extended_data[0],1,unpadded_linesize,outFile[0]);
+            av_frame_unref(pFrame);
+       }
+       
+       } while(packet.size>0);
+       
+       
+       av_packet_unref(&orig_pkt);
     }
+    // Flush cached frames
+    packet.data = NULL;
+    packet.size = 0;
+    
+    // Test queue
+    // while(packet_queue_get(&audioq,&packet,0)>0){
+    //     printf("Packet size: %d\n", packet.size);
+    // }
+    
+    
+    
+    
+    // Decode frames
+    // while(packet_queue_get(&audioq,&packet,0)>0){
+        
+    //     int ret = avcodec_decode_audio4(pAudioCodecCtx,pFrame,&got_frame,&packet);  
+        
+    //     if(ret < 0) fprintf(stderr,"Error decoding audio frame");
+    //     if(got_frame){
+    //         size_t unpadded_linesize = pFrame->nb_samples*av_get_bytes_per_sample(pFrame->format);
+    //         // printf("Packet data: %x\n", packet.data);
+    //         // printf("pFrame samples/channels: %d\n",pFrame->nb_samples);
+    //         // printf("pFrame channel layout: %d\n",pFrame->channel_layout);
+    //         // printf("pFrame linesize: %d\n",pFrame->linesize[0]);
+    //         // printf("Bytes per sample: %d\n", av_get_bytes_per_sample(pFrame->format));
+    //         // printf("Unpadded linesize: %d",unpadded_linesize);
+            
+    //         for(i = 0; i < numOfChannels; i++){
+    //             fopen(outNames[i],"wb");
+    //             fwrite(pFrame->extended_data[i],1,unpadded_linesize,outFile[i]);
+    //             // printf("pFrame data[%d]: %x\n" ,i,pFrame->extended_data[i]);
+    //         }
+    //     }
+    //     av_frame_unref(pFrame);
+    // }
     
     
     printf("Demuxing succeeded\n");
     
-    const char * fmt;
-    if(get_format_from_sample_fmt(&fmt,pAudioCodecCtx->sample_fmt) < 0) 
-        fprintf(stderr ,"whoops" );
-    printf("Play the output audio file with the command:\n"
-               "ffplay -f %s -ac %d -ar %d %s\n",
-               fmt, numOfChannels, pAudioCodecCtx->sample_rate,
-               "file_name");
-    
-    
-    // enum AVSampleFormat sample_format = pAudioCodecCtx->sample_fmt;
-    // const char *fmt;
+    if(pAudioStream){
+        enum AVSampleFormat sfmt = pAudioCodecCtx->sample_fmt;
+        
+        const char * fmt;
+        if(av_sample_fmt_is_planar(sfmt)){
+            const char *packer = av_get_sample_fmt_name(sfmt);
+            sfmt=av_get_packed_sample_fmt(sfmt);
+        } 
+        if((ret = get_format_from_sample_fmt(&fmt,sfmt))<0){
+            fprintf(stderr ,"whoops\n" );
+        }
+        printf("Play the output audio file with the command:\n"
+                "ffplay -f %s -ar %d %s\n",
+                fmt, pAudioCodecCtx->sample_rate,
+                "file_name");
+    }
   
 }
 
@@ -262,6 +284,7 @@ int open_codec_context(int *stream_idx, AVFormatContext *pFormatCtx, enum AVMedi
     ret = av_find_best_stream(pFormatCtx,type,-1,-1,NULL,0);
     if(ret<0){
         fprintf(stderr,"Could not find %s in input file '%s'",av_get_media_type_string(type),src_filename);
+        return ret;
     }
     else{
         strIndex = ret;
@@ -408,51 +431,36 @@ static int packet_queue_get(PacketQueue *q, AVPacket *pkt, int block){
 
 // Decodes the packet and returns its value (?)
 // Adapted from http://ffmpeg.org/doxygen/3.0/demuxing_decoding_8c-example.html
-// static int decode_audio_packet(int *got_frame,int cached){
-//     int ret = 0;
-//     int decoded = packet.size; // references static variable
+static int decode_audio_packet(int *got_frame,int cached){
+    int ret = 0;
+    int decoded = packet.size; // references static variable
     
-//     *got_frame = 0;
+    *got_frame = 0;
     
-//     printf("--3.1--\n");
-//     printf("** %d\n",pAudioCodecCtx->channels);
-//     printf("** %d\n",*got_frame);
-//     printf("** %d\n", packet.stream_index);
-//     printf("** %d\n",audio_stream_idx);
-    
-//     if(packet.stream_index == audio_stream_idx){
-//         ret = avcodec_decode_audio4(pAudioCodecCtx,pFrame,got_frame,&packet);
-//         printf("--3.2--\n");
-//         // avcodec_decode_audio4 doc: 
-//         // Decode the audio frame of size avpkt->size from avpkt->data into frame.
-        
-//         if(ret < 0){
-//             fprintf(stderr,"Error decoding audio frame (%s)\n", av_err2str(ret));
-//         }
-//         /* Some audio decoders decode only part of the packet, and have to be
-//             * called again with the remainder of the packet data.
-//             * Sample: fate-suite/lossless-audio/luckynight-partial.shn
-//             * Also, some decoders might over-read the packet. */
-//         decoded = FFMIN(ret,packet.size);
+    if(packet.stream_index == audio_stream_idx){
+        ret = avcodec_decode_audio4(pAudioCodecCtx,pFrame,got_frame,&packet);
         
         
-//         if(*got_frame){ // frame is valid
-//             printf("--3.3--\n");
-//             size_t unpadded_linesize = pFrame->nb_samples*av_get_bytes_per_sample(pFrame->format);
-//             printf("audio_frame%s n:%d nb_samples:%d pts:%s\n",
-//                     cached ? "(cached)" : "",
-//                     audio_frame_count++, pFrame->nb_samples,
-//                     av_ts2timestr(pFrame->pts, &pAudioCodecCtx->time_base));
-//             //fwrite(frame->extended_data[0], 1, unpadded_linesize, audio_dst_file);
-//         }
-//     }
-//     printf("--3.4--\n");
-//     if (*got_frame && refcount)
-//         av_frame_unref(pFrame);
+        // avcodec_decode_audio4 doc: 
+        // Decode the audio frame of size avpkt->size from avpkt->data into frame.
+        
+        if(ret < 0){
+            fprintf(stderr,"Error decoding audio frame (%s)\n", av_err2str(ret));
+        }
+        /* Some audio decoders decode only part of the packet, and have to be
+            * called again with the remainder of the packet data.
+            * Sample: fate-suite/lossless-audio/luckynight-partial.shn
+            * Also, some decoders might over-read the packet. */
+        decoded = FFMIN(ret,packet.size);
+        
+    }
+    
 
-//     return decoded;
-// }
+    return decoded;
+}
 
+
+// Borrowed from http://ffmpeg.org/doxygen/3.0/demuxing_decoding_8c-example.html
 static int get_format_from_sample_fmt(const char **fmt,
                                          enum AVSampleFormat sample_fmt){
        int i;
