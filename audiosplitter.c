@@ -14,7 +14,32 @@
 // and b) the number of channels, the new audio files will be created. 
 
 // The solution obtained is a single-threaded solution. However, a multithreaded solution
-// was conceived and it is explained in more details in the readme file.
+// was conceived and it is explained in detail:
+
+// ==================================================
+// Proposed solution for making use of multithreading:
+
+/*
+This program is often writing to 6 different files at the same time.
+Since writing to a file is expensive, one thread will mostly be doing this during runtime.
+A better approach would be to divide the file write into separate threads. 
+
+Each thread is then associated to a single file. Now we need a mechanism for 
+handing the information to the threads, so they can write to the file.
+
+A proposed solution is to employ a consumer-producer scheme, through a queue. The main thread is
+responsible for creating several queues and associate each queue to a thread.
+The queue datapackets will provide the information to the thread when called upon.
+A convenient "pthread_cond" signal will be set everytime a queue has a datapacket.
+
+This way, each packet is processed into the file-writing threads as soon as they are 
+indexed into the queues, leaving the main thread to decode the next AVPacket on the stream.
+
+I did not implement this solution due to lack of time. I left some of the code to better
+give an idea as to my implementation.
+*/
+ // ==================================================
+ 
  
 // Procedure for audio splitter:
 
@@ -22,7 +47,7 @@
 // 2) Extract the decoded AVPacketsinto frames, identify the channel data, and  input.
 // 3) Output to the files correctly.
 
-// Simple queue definitions
+// Simple queue definitions (to be used in the multithreading scheme above)
 typedef struct datapacket{
     int data;
     FILE * file;
@@ -47,7 +72,7 @@ static int open_codec_context(int *stream_idx, AVFormatContext *pFormatCtx, enum
 static int decode_audio_packet(int *got_frame,int cached);
 
 
-// Files
+// Input file
 static char * src_filename = NULL;
 
 // Necessary structure definitions. Refer to http://ffmpeg.org/doxygen/3.0/ for documentation.
@@ -104,7 +129,7 @@ int main(int argc, char *argv[]){
     
    
     // Now we determine the prefix for each file name based on the channel layout.
-    // And name the files accordingly.
+    // and name the files accordingly.
     char * token;
     char * temp = malloc(20*sizeof(char));
     char * outNames[numOfChannels]; 
@@ -123,7 +148,8 @@ int main(int argc, char *argv[]){
         outFile[i] = fopen(outNames[i],"wb"); // open file
     } 
     
-    // Create queue and thread for each channel
+    // Create queue and thread for each channel 
+    // (not necessary in the actual program, but shown for proof of concept)
     queue channelQueue[numOfChannels];
     pthread_t pth[numOfChannels]; 
     for(i = 0; i < numOfChannels;i++){
@@ -156,6 +182,7 @@ int main(int argc, char *argv[]){
                 size_t unpadded_linesize = pFrame->nb_samples * av_get_bytes_per_sample(pFrame->format);
                 for(i = 0; i < numOfChannels; i++){
                         fwrite(pFrame->extended_data[i],1,unpadded_linesize,outFile[i]);
+                        
                         // Add to queue
                         //queue_put(&channelQueue[i],pFrame->extended_data[i], unpadded_linesize, outFile[i]);
                 }

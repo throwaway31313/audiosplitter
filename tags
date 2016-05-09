@@ -1,31 +1,31 @@
 Maudiosplitter	audiosplitter.c	/^int main(int argc, char *argv[]){$/
 WriteToFile	audiosplitter.c	/^void * WriteToFile(void *args){$/
-audio_stream_idx	audiosplitter.c	62
-data	audiosplitter.c	27
-datapacket	audiosplitter.c	26
-datapacket	audiosplitter.c	31
+audio_stream_idx	audiosplitter.c	87
+data	audiosplitter.c	52
+datapacket	audiosplitter.c	51
+datapacket	audiosplitter.c	56
 decode_audio_packet	audiosplitter.c	/^static int decode_audio_packet(int *got_frame,int /
-file	audiosplitter.c	28
-first	audiosplitter.c	34
-fmt_be	audiosplitter.c	262
-fmt_le	audiosplitter.c	262
+file	audiosplitter.c	53
+first	audiosplitter.c	59
+fmt_be	audiosplitter.c	289
+fmt_le	audiosplitter.c	289
 get_format_from_sample_fmt	audiosplitter.c	/^static int get_format_from_sample_fmt($/
-last	audiosplitter.c	35
-linesize	audiosplitter.c	29
-next	audiosplitter.c	30
+last	audiosplitter.c	60
+linesize	audiosplitter.c	54
+next	audiosplitter.c	55
 open_codec_context	audiosplitter.c	/^int open_codec_context(int *stream_idx, AVFormatCo/
-pAudioCodec	audiosplitter.c	56
-pAudioCodecCtx	audiosplitter.c	55
-pAudioStream	audiosplitter.c	57
-pFormatCtx	audiosplitter.c	54
-pFrame	audiosplitter.c	59
-packet	audiosplitter.c	60
-packets	audiosplitter.c	36
-queue	audiosplitter.c	33
-queue	audiosplitter.c	37
+pAudioCodec	audiosplitter.c	81
+pAudioCodecCtx	audiosplitter.c	80
+pAudioStream	audiosplitter.c	82
+pFormatCtx	audiosplitter.c	79
+pFrame	audiosplitter.c	84
+packet	audiosplitter.c	85
+packets	audiosplitter.c	61
+queue	audiosplitter.c	58
+queue	audiosplitter.c	62
 queue_get	audiosplitter.c	/^int queue_get(queue *q, datapacket *pack){$/
 queue_init	audiosplitter.c	/^void queue_init(queue *q){$/
 queue_put	audiosplitter.c	/^int queue_put( queue *q ,int val, int line, FILE */
-sample_fmt	audiosplitter.c	262
-sample_fmt_entry	audiosplitter.c	261
-src_filename	audiosplitter.c	51
+sample_fmt	audiosplitter.c	289
+sample_fmt_entry	audiosplitter.c	288
+src_filename	audiosplitter.c	76
