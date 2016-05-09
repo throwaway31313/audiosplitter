@@ -373,10 +373,6 @@ static int packet_queue_get(PacketQueue *q, AVPacket *pkt, int block){
     }    
     return ret;
 }
-<<<<<<< HEAD
-
-=======
-    
 
 // int audio_decode_frame(AVCodecContext * aCodecCtx, uint8_t *audio_buf, int buf_size){
 //     static AVPacket pkt;
@@ -424,8 +420,6 @@ static int packet_queue_get(PacketQueue *q, AVPacket *pkt, int block){
 //     audio_pkt_size = pkt.size;
     
 // }
->>>>>>> 10b39ee7ca7f5f670d2f06ac555eb9a7deeb94d3
-
 // Decodes the packet and returns its value (?)
 // Adapted from http://ffmpeg.org/doxygen/3.0/demuxing_decoding_8c-example.html
 static int decode_audio_packet(int *got_frame,int cached){
