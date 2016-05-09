@@ -1,29 +1,31 @@
 Maudiosplitter	audiosplitter.c	/^int main(int argc, char *argv[]){$/
-PacketQueue	audiosplitter.c	38
-PacketQueue	audiosplitter.c	51
-audio_frame_count	audiosplitter.c	79
-audio_stream_idx	audiosplitter.c	77
-audioq	audiosplitter.c	84
+WriteToFile	audiosplitter.c	/^void * WriteToFile(void *args){$/
+audio_stream_idx	audiosplitter.c	62
+data	audiosplitter.c	27
+datapacket	audiosplitter.c	26
+datapacket	audiosplitter.c	31
 decode_audio_packet	audiosplitter.c	/^static int decode_audio_packet(int *got_frame,int /
-first_pkt	audiosplitter.c	39
-fmt_be	audiosplitter.c	459
-fmt_le	audiosplitter.c	459
-get_format_from_sample_fmt	audiosplitter.c	/^static int get_format_from_sample_fmt(const char */
-last_pkt	audiosplitter.c	39
-nb_packets	audiosplitter.c	47
+file	audiosplitter.c	28
+first	audiosplitter.c	34
+fmt_be	audiosplitter.c	262
+fmt_le	audiosplitter.c	262
+get_format_from_sample_fmt	audiosplitter.c	/^static int get_format_from_sample_fmt($/
+last	audiosplitter.c	35
+linesize	audiosplitter.c	29
+next	audiosplitter.c	30
 open_codec_context	audiosplitter.c	/^int open_codec_context(int *stream_idx, AVFormatCo/
-pAudioCodec	audiosplitter.c	71
-pAudioCodecCtx	audiosplitter.c	70
-pAudioStream	audiosplitter.c	72
-pFormatCtx	audiosplitter.c	69
-pFrame	audiosplitter.c	74
-packet	audiosplitter.c	75
-packet_queue_get	audiosplitter.c	/^static int packet_queue_get(PacketQueue *q, AVPack/
-packet_queue_init	audiosplitter.c	/^void packet_queue_init(PacketQueue *q){$/
-packet_queue_put	audiosplitter.c	/^int packet_queue_put(PacketQueue *q, AVPacket *pkt/
-quit	audiosplitter.c	81
-refcount	audiosplitter.c	78
-sample_fmt	audiosplitter.c	459
-sample_fmt_entry	audiosplitter.c	458
-size	audiosplitter.c	48
-src_filename	audiosplitter.c	66
+pAudioCodec	audiosplitter.c	56
+pAudioCodecCtx	audiosplitter.c	55
+pAudioStream	audiosplitter.c	57
+pFormatCtx	audiosplitter.c	54
+pFrame	audiosplitter.c	59
+packet	audiosplitter.c	60
+packets	audiosplitter.c	36
+queue	audiosplitter.c	33
+queue	audiosplitter.c	37
+queue_get	audiosplitter.c	/^int queue_get(queue *q, datapacket *pack){$/
+queue_init	audiosplitter.c	/^void queue_init(queue *q){$/
+queue_put	audiosplitter.c	/^int queue_put( queue *q ,int val, int line, FILE */
+sample_fmt	audiosplitter.c	262
+sample_fmt_entry	audiosplitter.c	261
+src_filename	audiosplitter.c	51
