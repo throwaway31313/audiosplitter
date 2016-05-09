@@ -176,7 +176,7 @@ int main(int argc, char *argv[]){
     
     if (!pFrame) {
         fprintf(stderr, "Could not allocate frame\n");
-        ret = AVERROR(ENOMEM);
+        ret = AVERROR(ENOMEM); 
     }
     
     int got_frame;
@@ -225,7 +225,7 @@ int main(int argc, char *argv[]){
     
     
     
-    // Decode frames
+    // Test read from queue
     // while(packet_queue_get(&audioq,&packet,0)>0){
         
     //     int ret = avcodec_decode_audio4(pAudioCodecCtx,pFrame,&got_frame,&packet);  
@@ -233,13 +233,6 @@ int main(int argc, char *argv[]){
     //     if(ret < 0) fprintf(stderr,"Error decoding audio frame");
     //     if(got_frame){
     //         size_t unpadded_linesize = pFrame->nb_samples*av_get_bytes_per_sample(pFrame->format);
-    //         // printf("Packet data: %x\n", packet.data);
-    //         // printf("pFrame samples/channels: %d\n",pFrame->nb_samples);
-    //         // printf("pFrame channel layout: %d\n",pFrame->channel_layout);
-    //         // printf("pFrame linesize: %d\n",pFrame->linesize[0]);
-    //         // printf("Bytes per sample: %d\n", av_get_bytes_per_sample(pFrame->format));
-    //         // printf("Unpadded linesize: %d",unpadded_linesize);
-            
     //         for(i = 0; i < numOfChannels; i++){
     //             fopen(outNames[i],"wb");
     //             fwrite(pFrame->extended_data[i],1,unpadded_linesize,outFile[i]);
