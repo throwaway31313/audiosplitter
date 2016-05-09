@@ -26,7 +26,7 @@ If the library was installed via the link above, then simply run:
 
 4) To run the program, go to the bin directory by typing "cd bin" and type:
 
->> ./audiosplitter.out <input_file_name>
+>> ./audiosplitter.out "input_file_name"
 
 5) If the program ran correctly, multiple files should appear in the /bin directory,
 each corresponding to a different channel in the original audio file.
