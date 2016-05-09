@@ -23,9 +23,6 @@ dirs:
 	mkdir -p obj
 	mkdir -p bin
 
-tags: *.c
-	ctags *.c
-
 bin/%.out: obj/%.o
 	$(CC) $(CFLAGS) $< $(LDFLAGS) -o $@
 
