@@ -1,23 +1,28 @@
 Maudiosplitter	audiosplitter.c	/^int main(int argc, char *argv[]){$/
 PacketQueue	audiosplitter.c	36
 PacketQueue	audiosplitter.c	49
-audio_frame_count	audiosplitter.c	76
-audio_stream_idx	audiosplitter.c	74
-audioq	audiosplitter.c	81
+audio_frame_count	audiosplitter.c	77
+audio_stream_idx	audiosplitter.c	75
+audioq	audiosplitter.c	82
 first_pkt	audiosplitter.c	37
+fmt_be	audiosplitter.c	460
+fmt_le	audiosplitter.c	460
+get_format_from_sample_fmt	audiosplitter.c	/^static int get_format_from_sample_fmt(const char */
 last_pkt	audiosplitter.c	37
 nb_packets	audiosplitter.c	45
 open_codec_context	audiosplitter.c	/^int open_codec_context(int *stream_idx, AVFormatCo/
-pAudioCodec	audiosplitter.c	68
-pAudioCodecCtx	audiosplitter.c	67
-pAudioStream	audiosplitter.c	69
-pFormatCtx	audiosplitter.c	66
-pFrame	audiosplitter.c	71
-packet	audiosplitter.c	72
+pAudioCodec	audiosplitter.c	69
+pAudioCodecCtx	audiosplitter.c	68
+pAudioStream	audiosplitter.c	70
+pFormatCtx	audiosplitter.c	67
+pFrame	audiosplitter.c	72
+packet	audiosplitter.c	73
 packet_queue_get	audiosplitter.c	/^static int packet_queue_get(PacketQueue *q, AVPack/
 packet_queue_init	audiosplitter.c	/^void packet_queue_init(PacketQueue *q){$/
 packet_queue_put	audiosplitter.c	/^int packet_queue_put(PacketQueue *q, AVPacket *pkt/
-quit	audiosplitter.c	78
-refcount	audiosplitter.c	75
+quit	audiosplitter.c	79
+refcount	audiosplitter.c	76
+sample_fmt	audiosplitter.c	460
+sample_fmt_entry	audiosplitter.c	459
 size	audiosplitter.c	46
-src_filename	audiosplitter.c	63
+src_filename	audiosplitter.c	64
