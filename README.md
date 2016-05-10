@@ -14,7 +14,7 @@ The compilation system is run on UNIX. To run the program, the user must have in
 
 1) To run the code, open the zipped archive or download it from https://github.com/throwaway31313/audiosplitter.
 
-2) In the working directory, export the "PKG_CONFIG_PATH" to the "pkgconfig" folder, found in /bin/ of the ffmpeg installation directory.
+2) In the working directory, export the "PKG_CONFIG_PATH" to the "pkgconfig" folder, found in /lib/ of the ffmpeg installation directory.
 
 >> export PKG_CONFIG_PATH= -DIRECTORY-TO-PKCONFIG-
 
