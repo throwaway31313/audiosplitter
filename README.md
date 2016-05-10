@@ -7,7 +7,7 @@ Splits audio in different files, each corresponding to a channel identified from
 ## Compilation system/ Dependencies:
 
 The compilation system is run on UNIX. To run the program, the user must have installed:
-[*] ffmpeg libraries (see https://trac.ffmpeg.org/wiki/CompilationGuide/Ubuntu.) 
+[*] ffmpeg libraries (see https://trac.ffmpeg.org/wiki/CompilationGuide/Ubuntu) 
 [*] cmake (see https://cmake.org/install/).
 
 ## Instructions
