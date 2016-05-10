@@ -16,7 +16,7 @@ The compilation system is run on UNIX. To run the program, the user must have in
 
 2) In the working directory, export the "PKG_CONFIG_PATH" to the "pkgconfig" folder, found in /bin/ of the ffmpeg installation directory.
 
->> export PKG_CONFIG_PATH= <<DIRECTORY-TO-PKCONFIG>>
+>> export PKG_CONFIG_PATH= -DIRECTORY-TO-PKCONFIG-
 
 If the library was installed via the link above, then simply run:
 
